@@ -1,0 +1,42 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: spring-boot-app-composition
+  labels:
+    pattern: spring-boot
+spec:
+  compositeTypeRef:
+    apiVersion: apps.example.org/v1alpha1
+    kind: CompositeApp
+  resources:
+    - name: repository
+      base:
+        apiVersion: gitops.crossplane.io/v1alpha1
+        kind: GitRepository
+        spec:
+          url: https://github.com/spring-projects/spring-petclinic.git
+          branch: main
+    - name: infrastructure
+      base:
+        apiVersion: infra.example.org/v1alpha1
+        kind: DataCenterDeployment
+        spec:
+          dataCenters:
+            - DC1
+            - DC2
+            - DC3
+    - name: database
+      base:
+        apiVersion: database.example.org/v1alpha1
+        kind: RedisDatabase
+        spec:
+          required: true
+          type: Redis
+    - name: networking
+      base:
+        apiVersion: networking.crossplane.io/v1alpha1
+        kind: VirtualNetwork
+        spec:
+          loadBalancer: true
+          vanityUrl: true
+
