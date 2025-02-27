@@ -1,0 +1,61 @@
+apiVersion: app.example.org/v1alpha1
+kind: AppClaim
+metadata:
+  name: springboot-app
+  namespace: dev-team
+spec:
+  application:
+    name: springboot-app
+    pattern: springboot
+    version: "1.0.0"
+    replicas: 3  # Default to 3 replicas per cluster
+  
+  deployment:
+    topology:
+      type: cross-dc  # Multi-cluster deployment across data centers
+      clusters:
+        - name: cluster-east
+          region: us-east-1
+        - name: cluster-west
+          region: us-west-1
+    loadBalancer:
+      type: avi-gslb  # Uses AVI GSLB for multi-cluster traffic distribution
+      hostname: myapp.example.com
+      strategy: round-robin # Load balancing strategy
+
+  externalDependencies:
+    s3:
+      enabled: true
+      bucketName: myapp-data-bucket
+      region: us-east-1
+      accessMode: ReadWrite  # Options: ReadOnly, ReadWrite
+
+  ciCd:
+    enabled: true
+    pipeline: tekton
+    pipelineRef: springboot-pipeline  # Reference to a Tekton Pipeline
+    triggers:
+      - type: git
+        repo: https://github.com/dev-team/springboot-app.git
+        branch: main
+      - type: image
+        image: quay.io/dev-team/springboot-app:latest
+
+  parameters:
+    resources:
+      cpu: "500m"
+      memory: "512Mi"
+      storage: "5Gi"
+    env:
+      - name: SPRING_PROFILES_ACTIVE
+        value: production
+      - name: DATABASE_URL
+        valueFrom:
+          secretRef:
+            name: db-credentials
+            key: url
+    ingress:
+      enabled: true
+      tls: true
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: "/"
