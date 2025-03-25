@@ -1,0 +1,45 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: haproxy-config
+spec:
+  compositeTypeRef:
+    apiVersion: example.com/v1alpha1
+    kind: XHAProxyConfig
+  resources:
+    - name: haproxy-config
+      base:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: haproxy-config
+          namespace: haproxy
+        data:
+          haproxy.cfg: |
+            global
+                log stdout format raw local0
+                maxconn 5000
+            defaults
+                log global
+                mode http
+                timeout connect 5s
+                timeout client 50s
+                timeout server 50s
+            frontend http_front
+                bind *:8080
+                default_backend ocp_backends
+            backend ocp_backends
+                balance roundrobin
+                option httpchk GET /actuator/health
+                http-request set-header X-Forwarded-Proto https
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: "spec.routes"
+          toFieldPath: "data.haproxy.cfg"
+          transforms:
+            - type: string
+              string:
+                fmt: |
+                  server %s %s:80 check
+                fmt: |
+                  %s
